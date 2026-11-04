@@ -1,4 +1,4 @@
-/* Em produção, informe a URL do endpoint que aceita POST e retorna GET de registros. */
+/* Configuração da API do backend Spring Boot */
 window.APP_CONFIG = {
-    API_URL: ""
+    API_URL: "http://localhost:8080/api/frequencia/registrar"
 };

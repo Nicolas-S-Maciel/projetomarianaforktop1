@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Atrasos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Relatório de Atrasos</h1>
+        <a href="index.html" class="link-admin">Novo registro</a>
+    </header>
+
+    <main class="container relatorio-container">
+        <section class="relatorio-card">
+            <div class="relatorio-topo">
+                <div>
+                    <p class="eyebrow">Área administrativa</p>
+                    <h2>Registros armazenados</h2>
+                    <p class="relatorio-ajuda">Consulte os registros do período selecionado.</p>
+                </div>
+                <button type="button" id="btn-imprimir" class="btn-submit">Gerar relatório</button>
+            </div>
+
+            <div class="resumo" aria-live="polite">
+                <div class="resumo-item">
+                    <strong id="total-registros">0</strong>
+                    <span>Total de registros</span>
+                </div>
+                <div class="resumo-item">
+                    <strong id="registros-hoje">0</strong>
+                    <span>Registros hoje</span>
+                </div>
+                <div class="resumo-item">
+                    <strong id="percentual-hoje">0%</strong>
+                    <span>Percentual do dia</span>
+                </div>
+            </div>
+
+            <div class="filtro-aluno">
+                <div class="input-group filtro-periodo">
+                    <label for="seletor-periodo">Período:</label>
+                    <input type="month" id="seletor-periodo" name="periodo">
+                </div>
+                <label for="seletor-aluno">Visualizar aluno:</label>
+                <select id="seletor-aluno" class="seletor-aluno"></select>
+            </div>
+
+            <div class="aluno-detalhe" aria-live="polite">
+                <h3 id="aluno-selecionado">Nenhum aluno selecionado</h3>
+                <p id="cpf-selecionado" class="aluno-cpf"></p>
+                <p class="frequencia">Frequência: <strong id="frequencia-aluno">100%</strong></p>
+            </div>
+            
+            <div class="tabela-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Horário</th>
+                            <th>Tipo</th> <!-- Nova Coluna -->
+                        </tr>
+                    </thead>
+                    <tbody id="lista-registros"></tbody>
+                </table>
+                <p id="estado-vazio" class="estado-vazio">Nenhum registro encontrado.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Senai. Todos os direitos reservados.</p>
+    </footer>
+    <script src="config.js"></script>
+    <script src="relatorio.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Atrasos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Ecrã de Boas-vindas (Estilo SENAI) -->
+    <div id="ecra-boas-vindas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #f4f6f9; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-family: Arial, sans-serif;">
+        
+        <!-- Cartão Branco Central -->
+        <div style="background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px; width: 90%;">
+            
+            <img src="images.jpg" alt="Logo SENAI" style="max-width: 200px; margin-bottom: 30px;">
+            
+            <h2 style="color: #333333; margin-bottom: 20px; font-size: 22px;">Acessibilidade</h2>
+            
+            <p style="font-size: 16px; color: #555555; margin-bottom: 30px; line-height: 1.5;">
+                Para ativar o <b>modo de acessibilidade com voz</b>, prima agora a tecla <br><b style="font-size: 18px; color: #333;">Barra de Espaço</b>.
+            </p>
+            
+            <button id="btn-normal" style="padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #e3262e; color: white; border: none; border-radius: 4px; width: 100%; transition: background 0.3s;" onmouseover="this.style.backgroundColor='#b81e25'" onmouseout="this.style.backgroundColor='#e3262e'">
+                Continuar sem acessibilidade
+            </button>
+        </div>
+
+        <!-- Rodapé Azul Escuro -->
+        <div style="position: absolute; bottom: 0; width: 100%; background-color: #1a365d; color: white; padding: 15px 0; font-size: 12px;">
+            © 2026 Senai. Todos os direitos reservados.
+        </div>
+    </div>
+
+    <header>
+        <h1>Registro de Atrasos</h1>
+        <a href="relatorio.html" class="link-admin">Relatório</a>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <img src="images.jpg" alt="Logo senai" class="hero-img">
+            
+            <form class="formulario" id="formulario-registro">
+                <div class="input-group">
+                    <label for="nome">Nome completo:</label>
+                    <input type="text" id="nome" name="nome" placeholder="Digite o seu nome completo" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="cpf">CPF:</label>
+                    <input type="text" id="cpf" name="cpf" placeholder="Digite seu CPF" maxlength="14" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="tipo-registro">Tipo de registro:</label>
+                    <select id="tipo-registro" name="tipo-registro" required>
+                        <option value="Atraso">Atraso</option>
+                        <option value="Saída Adiantada">Saída Adiantada</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-submit">Enviar Registro</button>
+                <div id="feedback-registro" class="feedback" role="status" aria-live="polite" hidden></div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Senai. Todos os direitos reservados.</p>
+    </footer>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
