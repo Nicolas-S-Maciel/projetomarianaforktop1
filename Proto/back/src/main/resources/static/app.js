@@ -200,9 +200,9 @@ function ouvirEtapaAtual() {
                 falarComCallback("O acesso ao microfone foi bloqueado. Por favor, permita o microfone nas configurações do navegador.");
                 etapaConversa = "IDLE";
             } else if (event.error === 'network') {
-                const msgBloqueio = "O serviço de reconhecimento de voz foi bloqueado pela rede (comum no Wi-Fi institucional do SENAI) ou pelo navegador. Dica: conecte no 4G do celular para testar a voz, ou navegue pelo teclado com a tecla TAB.";
-                console.warn("⚠️ Rede/Firewall bloqueou o servidor de reconhecimento de fala:", event.error);
-                exibirFeedback("A rede (Wi-Fi SENAI) bloqueou a API de fala do navegador. Dica: use o 4G do celular ou preencha com TAB.", "erro-rede");
+                const msgBloqueio = "Não foi possível conectar ao serviço de voz neste navegador. Recomendamos mudar de navegador para o Microsoft Edge, ou preencher pelo teclado com a tecla TAB.";
+                console.warn("⚠️ Falha de conexão na API de voz do navegador atual:", event.error);
+                exibirFeedback("Recomendamos mudar para o navegador Microsoft Edge ou preencher pelo teclado com a tecla TAB.", "erro-rede");
                 falarComCallback(msgBloqueio, () => {
                     if (nomeInput) nomeInput.focus();
                 });
