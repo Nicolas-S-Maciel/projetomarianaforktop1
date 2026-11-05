@@ -5,7 +5,7 @@
 # MarianaSRA
 ### **Sistema de Registro e Frequência Acessível**
 
-*Plataforma inclusiva e automatizada para controle de presença e pontualidade de alunos no SENAI, projetada nativamente com suporte a áudio-guia em tempo real e diretrizes de acessibilidade.*
+*Plataforma inclusiva e automatizada para controle de presença e pontualidade de alunos no SENAI, projetada nativamente com interatividade total por voz (reconhecimento via microfone e áudio-guia em tempo real).*
 
 [![SENAI](https://img.shields.io/badge/SENAI-Qualidade_de_Vida-e3262e?style=for-the-badge)](https://www.sp.senai.br/)
 [![Java](https://img.shields.io/badge/Java-24-1a365d?style=for-the-badge&logo=openjdk)](https://www.oracle.com/java/)
@@ -22,7 +22,7 @@
 - **Lucas Daniel**
 - **Murilo Abila**
 - **Murilo Amorim**
-- **Nicolas Maciel**
+- **Nícolas Maciel**
 - **Thiago Caetano**
 
 ---
@@ -31,13 +31,13 @@
 
 O **MarianaSRA** foi concebido no âmbito do **SENAI** para modernizar o atendimento no setor de Qualidade de Vida escolar, eliminando os gargalos do registro manual em papel e prevenindo perdas de tempo nas aulas[cite: 5].
 
-O diferencial central da aplicação é a sua **acessibilidade nativa para alunos com deficiência visual ou baixa visão**, integrando o programa **Incluir para Evoluir** através de um **modo de áudio-guia em tempo real** e navegação por teclado (`TAB` e `Enter`)[cite: 7, 10].
+O grande diferencial da aplicação é a sua **autonomia por voz para alunos com deficiência visual ou baixa visão**, integrando o programa **Incluir para Evoluir**[cite: 10]. O sistema evoluiu do modelo tradicional por teclado para uma **interação 100% por microfone (Speech-to-Text)**, permitindo que o aluno dite suas informações e veja o formulário ser preenchido automaticamente pela aplicação.
 
 ---
 
 ## 🎨 Identidade Visual SENAI
 
-O sistema adota estritamente os padrões visuais da marca SENAI na sua interface de utilizador:
+O sistema adota estritamente os padrões visuais da marca SENAI na sua interface de usuário:
 
 | Elemento | Cor / Código Hex | Aplicação no Sistema |
 | :--- | :--- | :--- |
@@ -50,12 +50,13 @@ O sistema adota estritamente os padrões visuais da marca SENAI na sua interface
 
 ## ✨ Funcionalidades Principais
 
-- ♿ **Modo de Acessibilidade por Voz:** Ecrã de boas-vindas com ativação rápida por teclado (tecla `Espaço`), impedindo interferências durante a digitação de nomes.
-- 🔊 **Áudio-Guia Integrado:** Leitura automática de rótulos de campos, mensagens de validação e confirmação de envio através da *Web Speech API*[cite: 10].
-- 🆔 **Validação Matemática de CPF:** Verificação automática de dígitos com máscara dinâmica (`000.000.000-00`) e limpeza de erros ao digitar.
-- ⏱️ **Registo Rápido:** Marcações instantâneas de **Atraso** e **Saída Adiantada**.
-- 📊 **Painel de Relatórios:** Consulta de acessos para acompanhamento da equipa de gestão escolar[cite: 6].
-- ⚡ **Funcionamento Híbrido (Offline-first):** Suporte a cache local no navegador (`localStorage`) em caso de oscilação de rede[cite: 9].
+- 🎙️ **Entrada por Microfone (Speech-to-Text):** O aluno fala diretamente no microfone seu **Nome**, **CPF** e **Tipo de Atraso**, e o sistema reconhece os dados preenchendo os campos automaticamente.
+- 🔊 **Áudio-Guia Integrado (Text-to-Speech):** A cada passo, a *Web Speech API* orienta o estudante e confirma os dados ditados com leitura audível[cite: 10].
+- ⚡ **Autocompletar Inteligente:** Preenchimento assistido a partir do reconhecimento de voz e histórico/cadastro do aluno.
+- 🆔 **Validação e Formatação de CPF:** Tratamento automático dos números ditados para cálculo de dígitos verificadores e formatação dinâmica (`000.000.000-00`).
+- ⏱️ **Registro Rápido:** Marcações instantâneas para **Atraso** e **Saída Adiantada**.
+- 📊 **Painel de Relatórios:** Consulta de acessos para acompanhamento da equipe de gestão escolar[cite: 6].
+- 🛡️ **Fallback Local (Offline-first):** Suporte a cache local no navegador (`localStorage`) em caso de oscilação de rede[cite: 9].
 
 ---
 
@@ -64,7 +65,7 @@ O sistema adota estritamente os padrões visuais da marca SENAI na sua interface
 | Camada | Tecnologias Utilizadas |
 | :--- | :--- |
 | **Frontend** | HTML5 Semântico, CSS3 (Estilo SENAI), JavaScript Vanilla[cite: 9, 10] |
-| **Acessibilidade** | Web Speech API (`window.speechSynthesis`), Atributos ARIA, Navegação por Teclado[cite: 7, 10] |
+| **Acessibilidade por Voz** | Web Speech API (`SpeechRecognition` e `SpeechSynthesis`)[cite: 10] |
 | **Backend** | Java (JDK 17/24), Spring Boot, Spring Data JPA, Hibernate, Tomcat (`8080`)[cite: 9] |
 | **Banco de Dados** | MySQL Server 8.0+[cite: 9] |
 | **Arquitetura** | REST API (JSON)[cite: 9] |
