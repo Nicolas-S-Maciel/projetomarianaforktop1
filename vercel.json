@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/frequencia/registrar", "destination": "/api/frequencia/registrar" },
+    { "source": "/relatorio", "destination": "/relatorio.html" }
+  ]
+}
