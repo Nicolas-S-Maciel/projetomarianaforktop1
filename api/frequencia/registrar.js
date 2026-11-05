@@ -55,3 +55,4 @@ module.exports = (req, res) => {
 
     res.status(405).json({ error: "Método não permitido" });
 };
+

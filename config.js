@@ -9,3 +9,4 @@ window.APP_CONFIG = {
         ? "http://localhost:8080/api/frequencia/registrar"
         : "/api/frequencia/registrar"
 };
+

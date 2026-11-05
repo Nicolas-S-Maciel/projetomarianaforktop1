@@ -1,6 +1,11 @@
 const STORAGE_KEY = "registrosAtrasos";
-// Endpoint configurado apontando para o backend Spring Boot
-const API_URL = window.APP_CONFIG?.API_URL?.trim() || "http://localhost:8080/api/frequencia/registrar";
+// Endpoint configurado apontando para o backend Spring Boot ou Serverless na Vercel
+const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const isSpringPort = window.location.port === "8080";
+
+const API_URL = window.APP_CONFIG?.API_URL?.trim() || ((isLocal && isSpringPort)
+    ? "http://localhost:8080/api/frequencia/registrar"
+    : "/api/frequencia/registrar");
 
 const form = document.querySelector("#formulario-registro");
 const cpfInput = document.querySelector("#cpf");
@@ -17,7 +22,7 @@ const btnNormal = document.getElementById('btn-normal');
 window._activeUtterance = null;
 let fallbackSpeechTimer = null;
 
-// Sinal sonoro (BIP suave) para avisar o usuário que o microfone abriu e está ouvindo
+// Sinal sonoro (BIP mais nítido, encorpado e audível para alunos com deficiência visual)
 function tocarBipDeEscuta() {
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -26,22 +31,32 @@ function tocarBipDeEscuta() {
         if (ctx.state === 'suspended') {
             ctx.resume();
         }
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
 
-        osc.type = "sine";
-        // Tom ascendente suave (D5 -> A5)
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.08);
+        const now = ctx.currentTime;
 
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+        // Tom 1: Tom grave de aviso (587 Hz - Ré 5)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(587.33, now);
+        gain1.gain.setValueAtTime(0.40, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.13);
 
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 0.22);
+        // Tom 2: Tom agudo e audível de autorização para falar (880 Hz - Lá 5, onda triangular para maior penetração acústica)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "triangle";
+        osc2.frequency.setValueAtTime(880.00, now + 0.10);
+        gain2.gain.setValueAtTime(0.45, now + 0.10);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.10);
+        osc2.stop(now + 0.40);
     } catch (e) {
         console.warn("Áudio de bip não suportado:", e);
     }
@@ -81,10 +96,10 @@ function falarComCallback(texto, callbackAposFalar) {
                 fallbackSpeechTimer = null;
             }
             window._activeUtterance = null;
-            // Intervalo de 300ms para evitar eco no microfone
+            // Intervalo de 350ms para evitar eco e garantir que a fala do sintetizador terminou totalmente
             setTimeout(() => {
                 if (callbackAposFalar) callbackAposFalar();
-            }, 300);
+            }, 350);
         }
     };
 
@@ -94,7 +109,7 @@ function falarComCallback(texto, callbackAposFalar) {
         concluir();
     };
 
-    // Watchdog de segurança: se o Chrome engolir o onend por bug do V8, força a conclusão
+    // Watchdog de segurança: se o navegador engolir o onend por bug de memória, força a conclusão
     const tempoEstimadoMs = Math.max(2500, (texto.length * 85) / fala.rate);
     fallbackSpeechTimer = setTimeout(concluir, tempoEstimadoMs + 800);
 
@@ -112,6 +127,8 @@ let recognition = null;
 let escutando = false;
 let etapaConversa = "IDLE"; // IDLE, NOME, CPF, CONFIRMAR_AUTOCOMPLETE_CPF, TIPO, CONFIRMACAO
 let tentativasSilencio = 0;
+let respostaRecebidaNesteTurno = false;
+let ultimaTranscricaoCapturada = "";
 
 function pararEscuta() {
     escutando = false;
@@ -122,7 +139,7 @@ function pararEscuta() {
     }
 }
 
-// Inicia escuta criando uma nova instância limpa (evita travamento do SpeechRecognition no Chrome)
+// Inicia escuta criando uma nova instância limpa (evita travamento do SpeechRecognition no Chrome/Edge)
 function ouvirEtapaAtual() {
     if (!modoVozAtivado || etapaConversa === "IDLE") return;
 
@@ -131,15 +148,17 @@ function ouvirEtapaAtual() {
         return;
     }
 
-    // Verifica se abriu como file:// (o Chrome bloqueia o microfone da Web Speech API se for aberto como arquivo)
+    // Verifica se abriu como file://
     if (window.location.protocol === "file:") {
-        const msgErro = "Atenção: A página foi aberta como arquivo local (file://). O Google Chrome só permite o microfone quando aberto através de um servidor local como http://localhost:8080 ou pelo Live Server do VS Code.";
+        const msgErro = "Atenção: A página foi aberta como arquivo local (file://). Recomendamos abrir via servidor local como http://localhost:8080 ou pelo Live Server do VS Code.";
         exibirFeedback(msgErro, "erro-rede");
         falarComCallback(msgErro);
         return;
     }
 
     pararEscuta();
+    respostaRecebidaNesteTurno = false;
+    ultimaTranscricaoCapturada = "";
 
     try {
         recognition = new SpeechRecognition();
@@ -169,14 +188,15 @@ function ouvirEtapaAtual() {
                 }
             }
 
-            // Exibição em tempo real na tela enquanto a pessoa fala
             if (interimTranscript) {
+                ultimaTranscricaoCapturada = interimTranscript.trim();
                 mostrarDigitacaoEmTempoReal(interimTranscript);
             }
 
-            // Processamento do resultado final falado
             if (finalTranscript.trim()) {
+                ultimaTranscricaoCapturada = finalTranscript.trim();
                 console.log("🗣️ Fala final detectada:", finalTranscript);
+                respostaRecebidaNesteTurno = true;
                 processarRespostaPorVoz(finalTranscript.trim());
             }
         };
@@ -187,15 +207,7 @@ function ouvirEtapaAtual() {
             console.warn("⚠️ SpeechRecognition erro:", event.error);
 
             if (event.error === 'no-speech') {
-                tentativasSilencio++;
-                if (tentativasSilencio <= 2) {
-                    falarComCallback("Não consegui ouvir. Por favor, fale novamente após o sinal.", () => {
-                        ouvirEtapaAtual();
-                    });
-                } else {
-                    falarComCallback("Não detectei som no microfone. Pressione a Barra de Espaço quando desejar tentar novamente.");
-                    etapaConversa = "IDLE";
-                }
+                repetirPerguntaAtual();
             } else if (event.error === 'not-allowed') {
                 falarComCallback("O acesso ao microfone foi bloqueado. Por favor, permita o microfone nas configurações do navegador.");
                 etapaConversa = "IDLE";
@@ -209,8 +221,8 @@ function ouvirEtapaAtual() {
                 etapaConversa = "IDLE";
             } else if (event.error !== 'aborted') {
                 setTimeout(() => {
-                    if (modoVozAtivado && etapaConversa !== "IDLE") {
-                        ouvirEtapaAtual();
+                    if (modoVozAtivado && etapaConversa !== "IDLE" && !respostaRecebidaNesteTurno) {
+                        repetirPerguntaAtual();
                     }
                 }, 400);
             }
@@ -219,6 +231,20 @@ function ouvirEtapaAtual() {
         recognition.onend = () => {
             escutando = false;
             atualizarIndicadorVisual(false);
+
+            // Se o reconhecimento encerrou sem processar uma resposta final (ex: disse palavra curta "sim" e encerrou rápido)
+            if (!respostaRecebidaNesteTurno && etapaConversa !== "IDLE" && modoVozAtivado) {
+                if (ultimaTranscricaoCapturada) {
+                    console.log("🗣️ Aproveitando transcrição capturada no encerramento:", ultimaTranscricaoCapturada);
+                    respostaRecebidaNesteTurno = true;
+                    processarRespostaPorVoz(ultimaTranscricaoCapturada);
+                } else {
+                    // Sem transcrição (silêncio ou não reconhecido): repete a pergunta após intervalo suave
+                    setTimeout(() => {
+                        repetirPerguntaAtual();
+                    }, 350);
+                }
+            }
         };
 
         recognition.start();
@@ -226,6 +252,48 @@ function ouvirEtapaAtual() {
         console.error("Falha ao abrir microfone:", e);
         escutando = false;
         atualizarIndicadorVisual(false);
+    }
+}
+
+// Repete a pergunta específica para a etapa atual caso o aluno não tenha respondido ou não tenha sido ouvido
+function repetirPerguntaAtual() {
+    if (!modoVozAtivado || etapaConversa === "IDLE") return;
+
+    tentativasSilencio++;
+    if (tentativasSilencio > 4) {
+        falarComCallback("Não consegui ouvir sua resposta. Pressione a Barra de Espaço a qualquer momento para tentar novamente.");
+        etapaConversa = "IDLE";
+        return;
+    }
+
+    switch (etapaConversa) {
+        case "NOME":
+            falarComCallback("Não consegui ouvir. Por favor, fale o seu nome completo após o sinal sonoro.", () => {
+                ouvirEtapaAtual();
+            });
+            break;
+        case "CONFIRMAR_AUTOCOMPLETE_CPF":
+            falarComCallback("Deseja usar este CPF encontrado no sistema? Diga Sim ou Não após o sinal sonoro.", () => {
+                ouvirEtapaAtual();
+            });
+            break;
+        case "CPF":
+            falarComCallback("Não consegui ouvir. Por favor, fale os 11 números do seu CPF após o sinal sonoro.", () => {
+                ouvirEtapaAtual();
+            });
+            break;
+        case "TIPO":
+            falarComCallback("Não consegui ouvir. Por favor, diga Atraso ou Saída Adiantada após o sinal sonoro.", () => {
+                ouvirEtapaAtual();
+            });
+            break;
+        case "CONFIRMACAO":
+            falarComCallback("Ainda aguardo sua confirmação. Para enviar o registro diga Sim, ou diga Não para recomeçar, logo após o sinal sonoro.", () => {
+                ouvirEtapaAtual();
+            });
+            break;
+        default:
+            ouvirEtapaAtual();
     }
 }
 
@@ -241,7 +309,7 @@ function mostrarDigitacaoEmTempoReal(textoInterim) {
     }
 }
 
-// Altera o placeholder para sinalizar visualmente que o microfone está escutando
+// Altera o placeholder e feedback visual para sinalizar que o microfone está escutando
 function atualizarIndicadorVisual(ativo) {
     if (etapaConversa === "NOME" && nomeInput) {
         if (ativo) {
@@ -256,6 +324,12 @@ function atualizarIndicadorVisual(ativo) {
             cpfInput.focus();
         } else {
             cpfInput.placeholder = "Digite seu CPF";
+        }
+    } else if (etapaConversa === "CONFIRMACAO") {
+        if (ativo && feedbackRegistro) {
+            feedbackRegistro.textContent = "🎤 Ouvindo: Diga 'Sim' para enviar ou 'Não' para recomeçar...";
+            feedbackRegistro.className = "feedback feedback--sucesso";
+            feedbackRegistro.hidden = false;
         }
     }
 }
@@ -283,10 +357,53 @@ function iniciarAssistenteDeVoz() {
     });
 }
 
+// Funções inteligentes para reconhecer variações de SIM e NÃO
+function verificarAfirmacao(texto) {
+    if (!texto) return false;
+    const t = texto.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[.,;!?]+/g, " ")
+        .trim();
+
+    const palavrasAfirmativas = [
+        "sim", "100", "sem", "si", "aham", "uhum", "uh-hum", "claro",
+        "com certeza", "confirmo", "confirma", "confirmar", "confirmado",
+        "pode", "pode sim", "pode enviar", "pode mandar", "envia", "enviar",
+        "manda", "vai", "isso", "positivo", "correto", "ok", "certo",
+        "ta bom", "beleza", "quero", "exato"
+    ];
+
+    if (t === "s") return true;
+
+    return palavrasAfirmativas.some(p => {
+        const regex = new RegExp("(^|\\s)" + p + "(\\s|$)", "i");
+        return regex.test(t) || t === p;
+    });
+}
+
+function verificarNegacao(texto) {
+    if (!texto) return false;
+    const t = texto.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[.,;!?]+/g, " ")
+        .trim();
+
+    const palavrasNegativas = [
+        "nao", "nop", "cancela", "cancelar", "cancelado", "recomeca",
+        "recomecar", "volta", "voltar", "errado", "espera", "parar",
+        "negativo", "nunca", "nao enviar"
+    ];
+
+    return palavrasNegativas.some(p => {
+        const regex = new RegExp("(^|\\s)" + p + "(\\s|$)", "i");
+        return regex.test(t) || t === p;
+    });
+}
+
 // Processador do diálogo por voz
 function processarRespostaPorVoz(textoOriginal) {
     if (!textoOriginal) {
-        ouvirEtapaAtual();
+        repetirPerguntaAtual();
         return;
     }
 
@@ -304,7 +421,7 @@ function processarRespostaPorVoz(textoOriginal) {
             nomeTratado = nomeTratado.replace(/(?:^|\s)\S/g, c => c.toUpperCase());
 
             if (nomeTratado.length < 2) {
-                falarComCallback("Não consegui identificar o seu nome. Por favor, fale novamente após o sinal.", () => {
+                falarComCallback("Não consegui identificar o seu nome. Por favor, fale novamente após o sinal sonoro.", () => {
                     ouvirEtapaAtual();
                 });
                 return;
@@ -319,14 +436,14 @@ function processarRespostaPorVoz(textoOriginal) {
                 cpfInput.value = alunoConhecido.cpf;
                 etapaConversa = "CONFIRMAR_AUTOCOMPLETE_CPF";
                 const cpfFalado = alunoConhecido.cpf.replace(/\D/g, "").split("").join(" ");
-                falarComCallback(`Nome registrado: ${nomeTratado}. Encontrei o seu CPF: ${cpfFalado}. Deseja usar este CPF? Diga Sim ou Não após o sinal.`, () => {
+                falarComCallback(`Nome registrado: ${nomeTratado}. Encontrei o seu CPF: ${cpfFalado}. Deseja usar este CPF? Diga Sim ou Não após o sinal sonoro.`, () => {
                     ouvirEtapaAtual();
                 });
                 return;
             }
 
             etapaConversa = "CPF";
-            falarComCallback(`Nome registrado: ${nomeTratado}. Agora, fale os 11 números do seu CPF após o sinal.`, () => {
+            falarComCallback(`Nome registrado: ${nomeTratado}. Agora, fale os 11 números do seu CPF após o sinal sonoro.`, () => {
                 if (cpfInput) {
                     cpfInput.value = "";
                     cpfInput.focus();
@@ -337,17 +454,21 @@ function processarRespostaPorVoz(textoOriginal) {
         }
 
         case "CONFIRMAR_AUTOCOMPLETE_CPF": {
-            if (texto.includes("sim") || texto.includes("quero") || texto.includes("correto") || texto.includes("pode") || texto.includes("isso")) {
+            if (verificarAfirmacao(texto)) {
                 etapaConversa = "TIPO";
-                falarComCallback("CPF confirmado! Qual o tipo de registro? Diga Atraso ou Saída Adiantada após o sinal.", () => {
+                falarComCallback("CPF confirmado! Qual o tipo de registro? Diga Atraso ou Saída Adiantada após o sinal sonoro.", () => {
                     if (tipoInput) tipoInput.focus();
                     ouvirEtapaAtual();
                 });
-            } else {
+            } else if (verificarNegacao(texto)) {
                 cpfInput.value = "";
                 etapaConversa = "CPF";
-                falarComCallback("Entendido. Por favor, fale os 11 números do seu CPF após o sinal.", () => {
+                falarComCallback("Entendido. Por favor, fale os 11 números do seu CPF após o sinal sonoro.", () => {
                     if (cpfInput) cpfInput.focus();
+                    ouvirEtapaAtual();
+                });
+            } else {
+                falarComCallback("Deseja usar o CPF encontrado? Diga Sim ou Não após o sinal sonoro.", () => {
                     ouvirEtapaAtual();
                 });
             }
@@ -358,7 +479,7 @@ function processarRespostaPorVoz(textoOriginal) {
             const digitos = extrairDigitosCpf(textoOriginal);
 
             if (digitos.length !== 11) {
-                falarComCallback(`Entendi ${digitos.length} números. O CPF precisa de 11 dígitos. Fale novamente o seu CPF após o sinal.`, () => {
+                falarComCallback(`Entendi ${digitos.length} números. O CPF precisa de 11 dígitos. Fale novamente o seu CPF após o sinal sonoro.`, () => {
                     if (cpfInput) cpfInput.value = "";
                     ouvirEtapaAtual();
                 });
@@ -366,7 +487,7 @@ function processarRespostaPorVoz(textoOriginal) {
             }
 
             if (!validarCpf(digitos)) {
-                falarComCallback("O CPF não é válido pelo cálculo de verificação. Fale novamente os números do seu CPF após o sinal.", () => {
+                falarComCallback("O CPF não é válido pelo cálculo de verificação. Fale novamente os números do seu CPF após o sinal sonoro.", () => {
                     if (cpfInput) cpfInput.value = "";
                     ouvirEtapaAtual();
                 });
@@ -379,7 +500,7 @@ function processarRespostaPorVoz(textoOriginal) {
 
             const cpfFalado = digitos.split("").join(" ");
             etapaConversa = "TIPO";
-            falarComCallback(`CPF validado: ${cpfFalado}. Qual é o tipo de registro? Diga Atraso ou Saída Adiantada após o sinal.`, () => {
+            falarComCallback(`CPF validado: ${cpfFalado}. Qual é o tipo de registro? Diga Atraso ou Saída Adiantada após o sinal sonoro.`, () => {
                 if (tipoInput) tipoInput.focus();
                 ouvirEtapaAtual();
             });
@@ -389,7 +510,7 @@ function processarRespostaPorVoz(textoOriginal) {
         case "TIPO": {
             const tipoDetectado = identificarTipo(texto);
             if (!tipoDetectado) {
-                falarComCallback("Não identifiquei. Por favor, diga apenas Atraso ou Saída Adiantada após o sinal.", () => {
+                falarComCallback("Não identifiquei. Por favor, diga apenas Atraso ou Saída Adiantada após o sinal sonoro.", () => {
                     ouvirEtapaAtual();
                 });
                 return;
@@ -400,24 +521,24 @@ function processarRespostaPorVoz(textoOriginal) {
 
             etapaConversa = "CONFIRMACAO";
             const cpfSoDigitos = cpfInput.value.replace(/\D/g, "").split("").join(" ");
-            falarComCallback(`Resumo: Aluno ${nomeInput.value}, CPF ${cpfSoDigitos}, Registro de ${tipoDetectado}. Posso confirmar o envio? Diga Sim ou Não após o sinal.`, () => {
+            falarComCallback(`Resumo: Aluno ${nomeInput.value}, CPF ${cpfSoDigitos}, Registro de ${tipoDetectado}. Posso confirmar o envio? Diga Sim para enviar ou Não para recomeçar, após o sinal sonoro.`, () => {
                 ouvirEtapaAtual();
             });
             break;
         }
 
         case "CONFIRMACAO": {
-            if (texto.includes("sim") || texto.includes("pode") || texto.includes("confirmo") || texto.includes("enviar") || texto.includes("ok") || texto.includes("positivo") || texto.includes("correto")) {
+            if (verificarAfirmacao(texto)) {
                 submeterFormularioPorVoz();
-            } else if (texto.includes("não") || texto.includes("nao") || texto.includes("cancelar") || texto.includes("recomeçar") || texto.includes("recomecar")) {
+            } else if (verificarNegacao(texto)) {
                 if (form) form.reset();
                 etapaConversa = "NOME";
-                falarComCallback("Registro cancelado. Vamos começar de novo. Qual o seu nome completo após o sinal?", () => {
+                falarComCallback("Registro cancelado. Vamos começar de novo. Fale o seu nome completo após o sinal sonoro.", () => {
                     if (nomeInput) nomeInput.focus();
                     ouvirEtapaAtual();
                 });
             } else {
-                falarComCallback("Diga apenas Sim para enviar ou Não para recomeçar.", () => {
+                falarComCallback("Não entendi sua resposta. Para enviar o registro diga Sim, ou diga Não para recomeçar, logo após o sinal sonoro.", () => {
                     ouvirEtapaAtual();
                 });
             }
