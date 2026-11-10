@@ -3,6 +3,7 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/api/frequencia/registrar", "destination": "/api/frequencia/registrar" },
-    { "source": "/relatorio", "destination": "/relatorio.html" }
+    { "source": "/", "destination": "/front/index.html" },
+    { "source": "/relatorio", "destination": "/front/relatorio.html" }
   ]
 }
